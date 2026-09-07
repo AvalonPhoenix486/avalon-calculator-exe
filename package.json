@@ -1,0 +1,16 @@
+{
+  "name": "avalon-calculator",
+  "version": "0.1.0",
+  "description": "Calculadora simples com identidade visual do cristal Avalon (independente do Avalon Toolkit).",
+  "type": "module",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "android:init": "tauri android init",
+    "android:dev": "tauri android dev",
+    "android:build": "tauri android build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

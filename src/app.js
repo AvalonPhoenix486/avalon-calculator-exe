@@ -26,6 +26,8 @@
   const valueEl = document.getElementById('value');
   const pad = document.getElementById('pad');
 
+  const previewEl = document.getElementById('preview');
+
   const historyToggle = document.getElementById('historyToggle');
   const historyPanel = document.getElementById('historyPanel');
   const historyBackdrop = document.getElementById('historyBackdrop');
@@ -54,7 +56,23 @@
     exprEl.textContent = engine.expression;
     valueEl.textContent = engine.display;
     valueEl.classList.toggle('is-error', engine.display === 'Erro');
+    renderPreview();
     autoFitDisplay();
+  }
+
+  /** Prévia não-destrutiva do resultado enquanto a expressão é construída
+   * (não substitui a expressão nem o valor digitado — só um indicador
+   * auxiliar). engine.previewResult já garante null em vez de NaN/
+   * Infinity/"Erro" quando ainda não há nada calculável. */
+  function renderPreview() {
+    const preview = engine.previewResult;
+    if (preview === null) {
+      previewEl.textContent = '';
+      previewEl.classList.remove('visible');
+    } else {
+      previewEl.textContent = '= ' + formatForDisplay(preview);
+      previewEl.classList.add('visible');
+    }
   }
 
   function autoFitDisplay() {
@@ -301,4 +319,53 @@
   updateClearLabel();
   render();
   renderHistoryList();
+
+  // --- menu principal (☰) ---
+  // Os itens Meta do Mês / Conferência de Caixa / Calculadora de Datas /
+  // Histórico / Configurações são os MESMOS botões (#goalToggle,
+  // #cashToggle, #datesToggle, #historyToggle, #settingsToggle) que já
+  // existiam como ícones permanentes — só foram movidos para dentro do
+  // menu. A lógica de abrir/fechar cada um deles continua exatamente a
+  // mesma, em seus próprios módulos; aqui só fechamos o menu em si.
+  const menuToggle = document.getElementById('menuToggle');
+  const mainMenu = document.getElementById('mainMenu');
+  const mainMenuBackdrop = document.getElementById('mainMenuBackdrop');
+  const mainMenuClose = document.getElementById('mainMenuClose');
+  const menuCalculator = document.getElementById('menuCalculator');
+
+  function openMenu() {
+    mainMenu.classList.add('open');
+    mainMenu.setAttribute('aria-hidden', 'false');
+    mainMenuBackdrop.hidden = false;
+    requestAnimationFrame(() => mainMenuBackdrop.classList.add('open'));
+    menuToggle.setAttribute('aria-expanded', 'true');
+  }
+  function closeMenu() {
+    mainMenu.classList.remove('open');
+    mainMenu.setAttribute('aria-hidden', 'true');
+    mainMenuBackdrop.classList.remove('open');
+    menuToggle.setAttribute('aria-expanded', 'false');
+    setTimeout(() => { mainMenuBackdrop.hidden = true; }, 200);
+  }
+  menuToggle.addEventListener('click', () => {
+    if (mainMenu.classList.contains('open')) closeMenu();
+    else openMenu();
+  });
+  mainMenuClose.addEventListener('click', closeMenu);
+  mainMenuBackdrop.addEventListener('click', closeMenu);
+
+  // Qualquer item do menu que abre uma tela (todos exceto "Calculadora")
+  // fecha o menu em seguida — a própria tela escolhida assume a partir daí.
+  mainMenu.querySelectorAll('.main-menu-item[id$="Toggle"]').forEach((btn) => {
+    btn.addEventListener('click', closeMenu);
+  });
+
+  // "Calculadora": fecha o menu e, se alguma tela estiver aberta no
+  // momento, fecha também — reaproveitando o próprio botão de alternância
+  // de cada módulo (clicar nele de novo quando já está aberto o fecha,
+  // comportamento que cada módulo já implementa).
+  menuCalculator.addEventListener('click', () => {
+    closeMenu();
+    mainMenu.querySelectorAll('.main-menu-item[aria-expanded="true"]').forEach((btn) => btn.click());
+  });
 })();

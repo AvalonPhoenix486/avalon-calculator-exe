@@ -114,6 +114,12 @@ function formatForDisplay(numStr) {
   if (numStr === 'Erro') return 'Erro';
   const neg = numStr.startsWith('-');
   const plain = neg ? numStr.slice(1) : numStr;
+  // Sinal de que o usuário já digitou o separador decimal, mesmo que ainda
+  // não tenha digitado nenhum dígito depois dele (ex.: "1." enquanto
+  // digita "1,"). O motor nunca produz um ponto à toa em seus próprios
+  // resultados (decimalToString sempre remove), então isso só acontece
+  // durante a digitação ao vivo — e precisa continuar visível.
+  const hasDecimalPoint = plain.includes('.');
   const [intPart, fracPart = ''] = plain.split('.');
 
   const totalDigits = (intPart === '0' ? 0 : intPart.length) + fracPart.length;
@@ -140,7 +146,7 @@ function formatForDisplay(numStr) {
     frac = frac.replace(/0+$/, '');
   }
 
-  const result = frac ? `${out}.${frac}` : out;
+  const result = frac ? `${out}.${frac}` : (hasDecimalPoint ? `${out}.` : out);
   return (neg ? '-' : '') + result;
 }
 
@@ -264,6 +270,33 @@ class CalculatorEngine {
 
   get display() {
     return formatForDisplay(this.current);
+  }
+
+  /**
+   * Prévia não-destrutiva do resultado atual — espelha exatamente a mesma
+   * lógica de evaluate() (mesmo switch, mesmas funções add/subtract/
+   * multiply/divide), mas NUNCA toca em this.current/previous/operator.
+   * Não é uma reescrita das regras matemáticas: é a MESMA conta que
+   * evaluate() já faria, só que sem efeito colateral — chamada a cada
+   * tecla para alimentar a prévia em tempo real.
+   *
+   * Retorna null (sem prévia) quando ainda não há nada calculável — sem
+   * operador pendente, ou uma divisão por zero em andamento — nunca NaN
+   * nem Infinity, nunca "Erro" como valor de prévia.
+   */
+  get previewResult() {
+    if (!this.operator || this.previous === null) return null;
+    const a = this.previous, b = this.current;
+    let result;
+    switch (this.operator) {
+      case '+': result = add(a, b); break;
+      case '−': result = subtract(a, b); break;
+      case '×': result = multiply(a, b); break;
+      case '÷': result = b === '0' || parseDecimal(b).digits === 0n ? null : divide(a, b); break;
+      default: return null;
+    }
+    if (result === 'Erro' || result === null || result === undefined) return null;
+    return result;
   }
 }
 

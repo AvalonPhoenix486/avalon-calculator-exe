@@ -33,11 +33,19 @@
     return date.getDay();
   }
 
-  /** Regra de negócio da loja: funciona de segunda a sábado, fechada aos
-   * domingos. Isso é uma regra de negócio, não uma lista de calendário —
-   * se aplica a qualquer domingo de qualquer mês/ano automaticamente. */
-  function isWorkingDay(date) {
-    return getWeekday(date) !== 0;
+  /** Segunda a sábado — padrão que preserva o comportamento de instalações
+   * existentes que ainda não configuraram dias de funcionamento. */
+  const DEFAULT_WORKING_WEEKDAYS = [1, 2, 3, 4, 5, 6];
+
+  /** Regra de negócio da loja: quais dias da semana ela funciona. Antes era
+   * fixo (segunda a sábado); agora é configurável — `workingDays` é uma
+   * lista dos números de dia da semana (0=domingo...6=sábado) em que a
+   * loja funciona. O default preserva exatamente o comportamento antigo
+   * para quem não configurou nada ainda. O algoritmo em si (derivar do
+   * `Date` real, sem lista de datas fixada) continua o mesmo. */
+  function isWorkingDay(date, workingDays) {
+    const days = workingDays || DEFAULT_WORKING_WEEKDAYS;
+    return days.indexOf(getWeekday(date)) !== -1;
   }
 
   function isSameDate(a, b) {
@@ -63,25 +71,26 @@
     return dates;
   }
 
-  function getWorkingDaysInMonth(year, month) {
-    return getAllDatesInMonth(year, month).filter(isWorkingDay);
+  function getWorkingDaysInMonth(year, month, workingDays) {
+    return getAllDatesInMonth(year, month).filter((d) => isWorkingDay(d, workingDays));
   }
 
-  function getSundaysInMonth(year, month) {
-    return getAllDatesInMonth(year, month).filter((d) => !isWorkingDay(d));
+  function getSundaysInMonth(year, month, workingDays) {
+    return getAllDatesInMonth(year, month).filter((d) => !isWorkingDay(d, workingDays));
   }
 
   /** Dias de funcionamento estritamente posteriores a referenceDate,
-   * ainda dentro do mês informado. Domingos nunca entram nessa contagem —
-   * é filtrado pela mesma isWorkingDay usada em todo o resto do módulo. */
-  function getRemainingWorkingDays(year, month, referenceDate) {
-    return getWorkingDaysInMonth(year, month).filter((d) => isAfterDate(d, referenceDate)).length;
+   * ainda dentro do mês informado. Dias não-configurados como úteis nunca
+   * entram nessa contagem — filtrado pela mesma isWorkingDay usada em todo
+   * o resto do módulo. */
+  function getRemainingWorkingDays(year, month, referenceDate, workingDays) {
+    return getWorkingDaysInMonth(year, month, workingDays).filter((d) => isAfterDate(d, referenceDate)).length;
   }
 
   /** Dias de funcionamento estritamente depois de `fromDate` até `toDate`
    * (inclusive). Usado para decidir se a diferença entre dois registros de
    * acumulado pode ser atribuída com segurança a um único dia. */
-  function getWorkingDaysBetweenExclusiveInclusive(fromDate, toDate) {
+  function getWorkingDaysBetweenExclusiveInclusive(fromDate, toDate, workingDays) {
     const from = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
     const to = new Date(toDate.getFullYear(), toDate.getMonth(), toDate.getDate());
     if (to.getTime() <= from.getTime()) return 0;
@@ -89,10 +98,62 @@
     const cursor = new Date(from);
     cursor.setDate(cursor.getDate() + 1);
     while (cursor.getTime() <= to.getTime()) {
-      if (isWorkingDay(cursor)) count++;
+      if (isWorkingDay(cursor, workingDays)) count++;
       cursor.setDate(cursor.getDate() + 1);
     }
     return count;
+  }
+
+  /** Diferença civil (sem timestamps/fuso) entre duas datas — base para a
+   * Calculadora de Datas. Não exclui nenhum dia da semana por padrão; a
+   * exclusão (quando pedida) é aplicada separadamente por quem chama. */
+  function diffYMD(fromDate, toDate) {
+    const swap = isAfterDate(fromDate, toDate);
+    const start = swap ? toDate : fromDate;
+    const end = swap ? fromDate : toDate;
+    let years = end.getFullYear() - start.getFullYear();
+    let months = end.getMonth() - start.getMonth();
+    let days = end.getDate() - start.getDate();
+    if (days < 0) {
+      months -= 1;
+      const prevMonthDays = getDaysInMonth(
+        end.getMonth() === 0 ? end.getFullYear() - 1 : end.getFullYear(),
+        end.getMonth() === 0 ? 12 : end.getMonth()
+      );
+      days += prevMonthDays;
+    }
+    if (months < 0) {
+      years -= 1;
+      months += 12;
+    }
+    return { years, months, days, inverted: swap };
+  }
+
+  /** Total de dias corridos entre duas datas civis (sempre >= 0,
+   * independentemente de qual data é informada primeiro). */
+  function totalDaysBetween(fromDate, toDate) {
+    const a = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
+    const b = new Date(toDate.getFullYear(), toDate.getMonth(), toDate.getDate());
+    const MS_PER_DAY = 24 * 60 * 60 * 1000;
+    return Math.round(Math.abs(b.getTime() - a.getTime()) / MS_PER_DAY);
+  }
+
+  /** Todas as datas civis entre fromDate e toDate, nos dois sentidos
+   * (inclusive em ambas as pontas) — base para exclusão de dias da semana
+   * na Calculadora de Datas. */
+  function getAllDatesBetweenInclusive(fromDate, toDate) {
+    const swap = isAfterDate(fromDate, toDate);
+    const start = swap ? toDate : fromDate;
+    const end = swap ? fromDate : toDate;
+    const from = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    const to = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+    const dates = [];
+    const cursor = new Date(from);
+    while (cursor.getTime() <= to.getTime()) {
+      dates.push(new Date(cursor));
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return dates;
   }
 
   function monthKey(year, month) {
@@ -128,10 +189,14 @@
     getSundaysInMonth,
     getRemainingWorkingDays,
     getWorkingDaysBetweenExclusiveInclusive,
+    diffYMD,
+    totalDaysBetween,
+    getAllDatesBetweenInclusive,
     monthKey,
     parseMonthKey,
     parseDateStr,
     formatDateStr,
+    DEFAULT_WORKING_WEEKDAYS,
   };
 
   if (typeof module !== 'undefined' && module.exports) {

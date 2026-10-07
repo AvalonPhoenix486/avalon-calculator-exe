@@ -36,10 +36,31 @@
       if (!data.backupMetadata || typeof data.backupMetadata !== 'object') {
         data.backupMetadata = { count: 0, lastAt: null, lastFilename: null };
       }
+      // Retrocompatibilidade: meses criados antes da configuração de dias
+      // de funcionamento existir não têm `workingDays` — assume o mesmo
+      // default que o calendar-engine sempre usou (segunda a sábado), sem
+      // forçar gravação aqui (normaliza só na leitura).
+      if (!Array.isArray(data.workingDays) || data.workingDays.length === 0) {
+        data.workingDays = (typeof AppSettings !== 'undefined' ? AppSettings.DEFAULT_WORKING_DAYS : [1, 2, 3, 4, 5, 6]).slice();
+      }
       return data;
     } catch (e) {
       return null;
     }
+  }
+
+  /** O mês atual (o que corresponde a hoje de verdade) acompanha a
+   * configuração vigente de dias de funcionamento continuamente — editar
+   * em Configurações reflete imediatamente nele. Qualquer outro mês (já
+   * passado, ou um mês futuro visitado antecipadamente) mantém o retrato
+   * que foi gravado da última vez que ESTE mês foi o mês atual — nunca é
+   * recalculado silenciosamente por uma mudança posterior na configuração
+   * global. Isso satisfaz a regra de não corromper histórico sem precisar
+   * de nenhuma migração: o retrato já fica congelado assim que o mês deixa
+   * de ser "hoje". */
+  function isCurrentRealMonth(year, month) {
+    const now = CalendarEngine.getCurrentDate();
+    return now.getFullYear() === year && now.getMonth() + 1 === month;
   }
 
   function saveMonth(data) {
@@ -62,8 +83,21 @@
         sales: [],
         status: 'OPEN', // todo mês novo começa aberto (seção 11)
         backupMetadata: { count: 0, lastAt: null, lastFilename: null },
+        workingDays: (typeof AppSettings !== 'undefined' ? AppSettings.getWorkingDays() : [1, 2, 3, 4, 5, 6]),
       };
       saveMonth(data);
+      return data;
+    }
+    // Mês atual: mantém sincronizado com a configuração vigente a cada
+    // acesso. Qualquer outro mês mantém o retrato já gravado.
+    if (typeof AppSettings !== 'undefined' && isCurrentRealMonth(year, month)) {
+      const live = AppSettings.getWorkingDays(); // já vem ordenado (ver setWorkingDays)
+      const current = data.workingDays || [];
+      const changed = live.length !== current.length || live.some((d, i) => d !== current[i]);
+      if (changed) {
+        data.workingDays = live;
+        saveMonth(data);
+      }
     }
     return data;
   }
@@ -218,6 +252,7 @@
       sales: data.sales.map((s) => ({ date: s.date, value: s.amount })),
       status: data.status,
       cashReconciliations,
+      workingDays: data.workingDays,
     };
   }
 
@@ -250,6 +285,9 @@
 
     const previous = getMonth(year, month);
     const status = backup.status === 'CLOSED' ? 'CLOSED' : 'OPEN';
+    const workingDays = Array.isArray(backup.workingDays) && backup.workingDays.length > 0
+      ? backup.workingDays
+      : (typeof AppSettings !== 'undefined' ? AppSettings.DEFAULT_WORKING_DAYS : [1, 2, 3, 4, 5, 6]);
 
     const data = {
       monthKey: CalendarEngine.monthKey(year, month),
@@ -259,6 +297,7 @@
       sales,
       status,
       backupMetadata: (previous && previous.backupMetadata) || { count: 0, lastAt: null, lastFilename: null },
+      workingDays,
     };
     saveMonth(data);
 

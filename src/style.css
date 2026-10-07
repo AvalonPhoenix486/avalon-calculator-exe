@@ -235,14 +235,40 @@ body {
   justify-content: center;
   background: linear-gradient(165deg, var(--glass) 0%, #081009 100%);
   border: 1px solid var(--glass-edge);
-  box-shadow: 0 2px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.03);
-  transition: transform 0.06s ease, box-shadow 0.06s ease, background 0.15s ease;
+  /* Sensação de tecla física: uma "base" sólida simulando espessura (a
+     sombra de 2px sem desfoque, logo abaixo), uma sombra de contato suave
+     no "chão" (ancora a tecla visualmente), e um brilho interno sutil no
+     topo (bisel). Ao pressionar, a tecla desce exatamente a altura da
+     base e a sombra de contato quase some — a mesma ilusão que teclas
+     físicas/mecânicas usam, sem depender de brilho ou cor. */
+  box-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.55),
+    0 3px 6px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: transform 0.07s cubic-bezier(0.2, 0.7, 0.3, 1),
+              box-shadow 0.07s cubic-bezier(0.2, 0.7, 0.3, 1),
+              background 0.15s ease;
+}
+
+/* Hover só em dispositivos que realmente têm um ponteiro com hover
+   (mouse/trackpad) — evita um estado "hover preso" em telas de toque. */
+@media (hover: hover) and (pointer: fine) {
+  .key:hover {
+    background: linear-gradient(165deg, #121b15 0%, #0a120d 100%);
+    border-color: rgba(77, 255, 160, 0.3);
+  }
 }
 
 .key:active,
 .key.pressed {
-  transform: translateY(1px) scale(0.97);
-  box-shadow: 0 1px 0 rgba(0,0,0,0.4), inset 0 0 0 1px rgba(77,255,160,0.25);
+  /* desce exatamente a altura da "base" (2px) — a tecla afunda até ficar
+     rente ao apoio, sem o scale() artificial de antes (que lembrava um
+     ícone "encolhendo", não uma tecla sendo pressionada). */
+  transform: translateY(2px);
+  box-shadow:
+    0 0 0 rgba(0, 0, 0, 0.55),
+    0 1px 2px rgba(0, 0, 0, 0.25),
+    inset 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .key-num { color: var(--ink); }
@@ -268,12 +294,32 @@ body {
   font-size: clamp(22px, 4vh, 28px);
   background: linear-gradient(155deg, var(--emerald-bright) 0%, var(--emerald) 55%, var(--emerald-deep) 100%);
   border: 1px solid var(--gold);
-  box-shadow: 0 3px 0 rgba(0,0,0,0.5), 0 0 22px -6px rgba(77, 255, 160, 0.7);
+  /* mesma base física das outras teclas (3px aqui, por ser maior/de
+     destaque), com um brilho de identidade bem mais contido que antes —
+     perceptível sem virar neon. */
+  box-shadow:
+    0 3px 0 rgba(0, 0, 0, 0.5),
+    0 3px 6px rgba(0, 0, 0, 0.3),
+    0 0 10px -4px rgba(77, 255, 160, 0.5);
   clip-path: polygon(50% 0%, 100% 30%, 100% 100%, 0% 100%, 0% 30%);
+  transition: transform 0.07s cubic-bezier(0.2, 0.7, 0.3, 1),
+              box-shadow 0.07s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .key-equals:hover {
+    box-shadow:
+      0 3px 0 rgba(0, 0, 0, 0.5),
+      0 3px 6px rgba(0, 0, 0, 0.3),
+      0 0 14px -4px rgba(77, 255, 160, 0.65);
+  }
 }
 .key-equals:active,
 .key-equals.pressed {
-  box-shadow: 0 1px 0 rgba(0,0,0,0.5), 0 0 30px -4px rgba(77, 255, 160, 0.95);
+  transform: translateY(3px);
+  box-shadow:
+    0 0 0 rgba(0, 0, 0, 0.5),
+    0 1px 2px rgba(0, 0, 0, 0.25),
+    0 0 8px -4px rgba(77, 255, 160, 0.6);
 }
 
 /* botões numéricos ocupam 1 coluna cada, exceto o zero (mantém grid simples) */
@@ -308,25 +354,10 @@ body {
    Reaproveita os tokens de cor já definidos no topo do arquivo.
    ============================================================ */
 
-.history-toggle {
-  width: 34px;
-  height: 34px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(201, 162, 39, 0.28);
-  border-radius: 999px;
-  background: linear-gradient(165deg, #0e1f17 0%, #081310 100%);
-  color: var(--emerald-bright);
-  cursor: pointer;
-  appearance: none;
-  transition: box-shadow 0.15s ease, transform 0.06s ease;
-}
-.history-toggle:active { transform: scale(0.94); }
-.history-toggle[aria-expanded="true"] {
-  box-shadow: 0 0 0 1px var(--emerald), 0 0 14px -4px rgba(77, 255, 160, 0.7);
-}
-.history-toggle-icon { width: 18px; height: 18px; }
+/* .history-toggle/.goal-toggle/.cash-toggle eram ícones circulares
+   permanentes no cabeçalho; esses 3 botões agora moraram para dentro do
+   menu ☰ como itens de texto (classe .main-menu-item) — o estilo deles
+   vive ali agora (ver bloco MENU PRINCIPAL). */
 
 .history-backdrop {
   position: fixed;
@@ -455,6 +486,7 @@ body {
 
 @media (min-width: 620px) {
   .history-panel { width: min(320px, 30vw); min-width: 280px; }
+  .main-menu { width: min(300px, 30vw); min-width: 260px; }
 }
 
 /* ============================================================
@@ -462,27 +494,13 @@ body {
    Módulo em tela cheia, mesmos tokens de cor da calculadora.
    ============================================================ */
 
-.goal-toggle {
-  width: 34px;
-  height: 34px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(201, 162, 39, 0.28);
-  border-radius: 999px;
-  background: linear-gradient(165deg, #0e1f17 0%, #081310 100%);
-  color: var(--gold-bright);
-  cursor: pointer;
-  appearance: none;
-  transition: box-shadow 0.15s ease, transform 0.06s ease;
-}
-.goal-toggle:active { transform: scale(0.94); }
-.goal-toggle[aria-expanded="true"] {
-  box-shadow: 0 0 0 1px var(--gold), 0 0 14px -4px rgba(240, 217, 137, 0.7);
-}
-.goal-toggle-icon { width: 18px; height: 18px; }
-
-.goal-backdrop {
+/* As telas de Calculadora de Datas e Configurações reaproveitam a mesma
+   mecânica visual de tela-cheia deslizante que já existia para Meta do
+   Mês/Caixa — só estendendo os seletores, em vez de duplicar as mesmas
+   regras para cada módulo novo. */
+.goal-backdrop,
+.dates-backdrop,
+.settings-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(2, 4, 3, 0.6);
@@ -490,9 +508,13 @@ body {
   transition: opacity 0.2s ease;
   z-index: 24;
 }
-.goal-backdrop.open { opacity: 1; }
+.goal-backdrop.open,
+.dates-backdrop.open,
+.settings-backdrop.open { opacity: 1; }
 
-.goal-module {
+.goal-module,
+.dates-module,
+.settings-module {
   position: fixed;
   inset: 0;
   z-index: 25;
@@ -502,9 +524,13 @@ body {
   display: flex;
   flex-direction: column;
 }
-.goal-module.open { transform: translateY(0); }
+.goal-module.open,
+.dates-module.open,
+.settings-module.open { transform: translateY(0); }
 
-.goal-scroll {
+.goal-scroll,
+.dates-scroll,
+.settings-scroll {
   flex: 1;
   overflow-y: auto;
   padding: max(20px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
@@ -516,18 +542,24 @@ body {
   margin: 0 auto;
 }
 
-.goal-head {
+.goal-head,
+.dates-head,
+.settings-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
-.goal-title {
+.goal-title,
+.dates-title,
+.settings-title {
   font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
   font-size: 15px;
   letter-spacing: 0.06em;
   color: var(--gold-bright);
 }
-.goal-close {
+.goal-close,
+.dates-close,
+.settings-close {
   appearance: none;
   border: none;
   background: none;
@@ -536,7 +568,9 @@ body {
   cursor: pointer;
   padding: 4px;
 }
-.goal-close:hover { color: var(--ink); }
+.goal-close:hover,
+.dates-close:hover,
+.settings-close:hover { color: var(--ink); }
 
 .goal-month-nav {
   display: flex;
@@ -772,26 +806,6 @@ body {
    CONFERÊNCIA DO CAIXA
    Módulo em tela cheia, mesma linguagem visual dos demais.
    ============================================================ */
-
-.cash-toggle {
-  width: 34px;
-  height: 34px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(23, 180, 100, 0.28);
-  border-radius: 999px;
-  background: linear-gradient(165deg, #0e1f17 0%, #081310 100%);
-  color: var(--emerald-bright);
-  cursor: pointer;
-  appearance: none;
-  transition: box-shadow 0.15s ease, transform 0.06s ease;
-}
-.cash-toggle:active { transform: scale(0.94); }
-.cash-toggle[aria-expanded="true"] {
-  box-shadow: 0 0 0 1px var(--emerald), 0 0 14px -4px rgba(77, 255, 160, 0.7);
-}
-.cash-toggle-icon { width: 18px; height: 18px; }
 
 .cash-backdrop {
   position: fixed;
@@ -1161,4 +1175,231 @@ body {
 .goal-module-readonly .goal-btn,
 .goal-module-readonly .goal-clear-sales {
   opacity: 0.55;
+}
+
+/* ============================================================
+   MENU PRINCIPAL (☰) — substitui os 3 ícones permanentes do cabeçalho
+   ============================================================ */
+
+.menu-toggle {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(201, 162, 39, 0.28);
+  border-radius: 999px;
+  background: linear-gradient(165deg, #0e1f17 0%, #081310 100%);
+  color: var(--emerald-bright);
+  cursor: pointer;
+  appearance: none;
+  transition: box-shadow 0.15s ease, transform 0.06s ease;
+}
+.menu-toggle:active { transform: scale(0.94); }
+.menu-toggle[aria-expanded="true"] {
+  border-color: rgba(77, 255, 160, 0.55);
+  box-shadow: 0 0 0 3px rgba(77, 255, 160, 0.12);
+}
+.menu-toggle-icon { width: 18px; height: 18px; }
+
+.main-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 4, 3, 0.6);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 29;
+}
+.main-menu-backdrop.open { opacity: 1; }
+
+.main-menu {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(280px, 78vw);
+  z-index: 30;
+  background: linear-gradient(175deg, #0d1a14 0%, #05090a 70%);
+  border-left: 1px solid var(--glass-edge);
+  transform: translateX(100%);
+  transition: transform 0.22s ease;
+  display: flex;
+  flex-direction: column;
+  padding: max(20px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom));
+  gap: 6px;
+}
+.main-menu.open { transform: translateX(0); }
+
+.main-menu-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.main-menu-title {
+  font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  color: var(--gold-bright);
+}
+.main-menu-close {
+  appearance: none;
+  border: none;
+  background: none;
+  color: var(--ink-dim);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px;
+}
+.main-menu-close:hover { color: var(--ink); }
+
+.main-menu-item {
+  appearance: none;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--ink);
+  text-align: left;
+  font-size: 14.5px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.main-menu-item:hover { background: rgba(23, 180, 100, 0.1); }
+.main-menu-item[aria-expanded="true"] {
+  border-color: rgba(77, 255, 160, 0.3);
+  color: var(--emerald-bright);
+  background: rgba(23, 180, 100, 0.08);
+}
+
+/* ============================================================
+   PRÉVIA DE RESULTADO EM TEMPO REAL
+   ============================================================ */
+
+.display-preview {
+  font-size: clamp(13px, 2vh, 16px);
+  text-align: right;
+  color: var(--ink-dim);
+  min-height: 1.2em;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition: opacity 0.1s ease, transform 0.1s ease;
+  font-variant-numeric: tabular-nums;
+}
+.display-preview.visible {
+  opacity: 0.75;
+  transform: translateY(0);
+  color: var(--emerald-bright);
+}
+
+/* ============================================================
+   CALCULADORA DE DATAS
+   ============================================================ */
+
+.dates-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dates-field label {
+  font-size: 12.5px;
+  color: var(--ink-dim);
+}
+.dates-field input[type="date"] {
+  appearance: none;
+  border: 1px solid var(--glass-edge);
+  border-radius: 10px;
+  background: var(--glass);
+  color: var(--ink);
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.dates-result {
+  background: linear-gradient(160deg, #0d1a14 0%, #081310 70%);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-panel);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dates-result-main {
+  font-size: 18px;
+  color: var(--emerald-bright);
+  font-weight: 600;
+}
+.dates-result-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13.5px;
+  color: var(--ink-dim);
+}
+.dates-result-row span:last-child { color: var(--ink); font-variant-numeric: tabular-nums; }
+.dates-result-row--final span:last-child { color: var(--gold-bright); font-weight: 600; }
+
+.dates-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dates-group-title {
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  color: var(--ink-dim);
+  text-transform: uppercase;
+}
+.dates-weekday-list,
+.settings-weekday-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+.dates-weekday-item,
+.settings-weekday-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  color: var(--ink);
+  padding: 8px 10px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.dates-weekday-item input,
+.settings-weekday-item input { accent-color: var(--emerald-bright); }
+
+.dates-exclusion-result { display: flex; flex-direction: column; gap: 8px; }
+
+.dates-convention-note {
+  font-size: 11.5px;
+  color: var(--ink-dim);
+  line-height: 1.5;
+  opacity: 0.8;
+}
+
+/* ============================================================
+   CONFIGURAÇÕES
+   ============================================================ */
+
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.settings-group-title {
+  font-size: 13.5px;
+  color: var(--gold-bright);
+  font-weight: 600;
+}
+.settings-group-hint {
+  font-size: 12px;
+  color: var(--ink-dim);
+  line-height: 1.5;
+}
+.settings-weekday-warning {
+  font-size: 12.5px;
+  color: #ff8f7a;
 }

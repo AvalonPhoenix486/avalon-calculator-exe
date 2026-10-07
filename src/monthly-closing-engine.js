@@ -25,7 +25,7 @@
     return sales.reduce((acc, s) => add(acc, s.amount), '0');
   }
 
-  function computeClosing({ meta, sales, year, month, referenceDate }) {
+  function computeClosing({ meta, sales, year, month, referenceDate, workingDays }) {
     referenceDate = referenceDate || CalendarEngine.getCurrentDate();
     const hasMeta = meta !== null && meta !== undefined && meta !== '';
     const accumulated = sumSales(sales);
@@ -47,8 +47,8 @@
     const referenceInMonth = referenceDate.getFullYear() === year && referenceDate.getMonth() + 1 === month;
     const referenceDateStr = CalendarEngine.formatDateStr(referenceDate);
     const todayHasSale = sales.some((s) => s.date === referenceDateStr);
-    const todayCounts = referenceInMonth && CalendarEngine.isWorkingDay(referenceDate) && !todayHasSale;
-    const remainingWorkingDays = CalendarEngine.getRemainingWorkingDays(year, month, referenceDate) + (todayCounts ? 1 : 0);
+    const todayCounts = referenceInMonth && CalendarEngine.isWorkingDay(referenceDate, workingDays) && !todayHasSale;
+    const remainingWorkingDays = CalendarEngine.getRemainingWorkingDays(year, month, referenceDate, workingDays) + (todayCounts ? 1 : 0);
     const periodClosed = remainingWorkingDays === 0;
 
     let requiredPerDay = null;
